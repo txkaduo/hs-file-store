@@ -20,6 +20,7 @@ library
                        FileStore.LocalFile
                        FileStore.Qiniu
                        FileStore.Function
+                       FileStore.Default
   -- other-modules:       
   default-extensions:  TemplateHaskell
                        QuasiQuotes
@@ -55,8 +56,11 @@ library
                      , http-client
                      , random
                      , wreq
+                     , persistent
+                     , safecopy
                      , hash-utils
                      , qiniu-utils
+                     , parsec-utils
 
   -- hs-source-dirs:      
   default-language:    Haskell2010
