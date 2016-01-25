@@ -58,9 +58,9 @@ library
                      , wreq
                      , persistent
                      , safecopy
-                     , hash-utils
+                     , hash-tx-utils
                      , qiniu-utils
-                     , parsec-utils
+                     , parsec-tx-utils
 
   -- hs-source-dirs:      
   default-language:    Haskell2010
