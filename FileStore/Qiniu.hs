@@ -8,8 +8,8 @@ import qualified Data.ByteString.Char8      as C8
 import qualified Data.ByteString.Base64.URL as B64U
 import Control.Monad.Except
 import Control.Monad.Logger
-import Network.HTTP.Client                  (newManager, defaultManagerSettings)
 import Network.Mime                         (MimeType)
+import qualified Network.Wreq.Session       as WS
 
 import Data.Byteable                        (Byteable(..))
 import System.Random                        (randomIO)
@@ -19,6 +19,7 @@ import FileStore.Types
 
 
 data QiniuFileStore i = QiniuFileStore
+                            WS.Session
                             QiniuDualConfig
                             FilePath        -- ^ url-path prefix
 
@@ -47,12 +48,12 @@ instance
     ) =>
     FileStoreService m (QiniuFileStore i)
     where
-    fssSaveLBS (QiniuFileStore qc path_prefix) m_mime privacy lbs = do
+    fssSaveLBS (QiniuFileStore sess qc path_prefix) m_mime privacy lbs = do
         pp <- mkPutPolicy (Scope bucket Nothing) save_key (fromIntegral (3600*24 :: Int))
         let upload_token = uploadToken skey akey pp
             fp = ""
         ws_result <- liftM packError $
-                        flip runReaderT upload_token $
+                        flip runReaderT (sess, upload_token) $
                             uploadOneShot (Just $ rkey) m_mime fp lbs
         case ws_result of
             Left err -> throwError $ either show show err
@@ -68,9 +69,9 @@ instance
                        StorePublic -> qcDualPublicBucket qc
                        StorePrivate -> qcDualPrivateBucket qc
 
-    fssDelete (QiniuFileStore qc path_prefix) privacy ident = do
+    fssDelete (QiniuFileStore sess qc path_prefix) privacy ident = do
+        let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
-                        mgmt <- newManager defaultManagerSettings
                         flip runReaderT mgmt $ Qiniu.delete skey akey (bucket, rkey)
         case ws_result of
             Right _ -> return ()
@@ -85,9 +86,9 @@ instance
                        StorePublic -> qcDualPublicBucket qc
                        StorePrivate -> qcDualPrivateBucket qc
 
-    fssCheckFile (QiniuFileStore qc path_prefix) privacy ident = do
+    fssCheckFile (QiniuFileStore sess qc path_prefix) privacy ident = do
+        let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
-                        mgmt <- newManager defaultManagerSettings
                         flip runReaderT mgmt $ Qiniu.stat skey akey (bucket, rkey)
         case ws_result of
             Right _ -> return True
@@ -103,14 +104,14 @@ instance
                        StorePublic -> qcDualPublicBucket qc
                        StorePrivate -> qcDualPrivateBucket qc
 
-    fssFetchRemoteSaveAs (QiniuFileStore qc path_prefix) = Just $ \privacy url ident -> do
+    fssFetchRemoteSaveAs (QiniuFileStore sess qc path_prefix) = Just $ \privacy url ident -> do
         let bucket = case privacy of
                        StorePublic -> qcDualPublicBucket qc
                        StorePrivate -> qcDualPrivateBucket qc
 
         let rkey = base64UrlResourceKey path_prefix ident
+        let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
-                        mgmt <- newManager defaultManagerSettings
                         flip runReaderT mgmt $
                             Qiniu.fetch skey akey (fromString url) (Scope bucket (Just rkey))
         case ws_result of
@@ -121,7 +122,7 @@ instance
             akey = qcDualAccessKey qc
 
 
-    fssPublicDownloadUrl (QiniuFileStore qc path_prefix) =
+    fssPublicDownloadUrl (QiniuFileStore _sess qc path_prefix) =
         Just $ \ _m_mime ident -> do
                 let rkey = base64UrlResourceKey path_prefix ident
                     (bucket, m_domain) = (qcDualPublicBucket qc, qcDualPublicDomain qc)
@@ -129,7 +130,7 @@ instance
                 return $ resourceDownloadUrl m_domain bucket rkey
 
 
-    fssPrivateDownloadUrl (QiniuFileStore qc path_prefix) =
+    fssPrivateDownloadUrl (QiniuFileStore _sess qc path_prefix) =
         Just $ \expiry _m_mime ident -> do
                 let rkey = base64UrlResourceKey path_prefix ident
                     (bucket, m_domain) = (qcDualPrivateBucket qc, qcDualPrivateDomain qc)
@@ -145,9 +146,9 @@ instance
     fssDownloadInternal _ = Nothing
 
 
-    fssCopyToPublic (QiniuFileStore qc path_prefix) ident = do
+    fssCopyToPublic (QiniuFileStore sess qc path_prefix) ident = do
+        let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
-                        mgmt <- newManager defaultManagerSettings
                         flip runReaderT mgmt $ Qiniu.copy skey akey
                                                     (pri_bucket, rkey) (pub_bucket, rkey)
         case ws_result of
@@ -168,9 +169,9 @@ instance
     ) =>
     FileStatService m (QiniuFileStore i)
     where
-    fssFileStat (QiniuFileStore qc path_prefix) privacy ident = do
+    fssFileStat (QiniuFileStore sess qc path_prefix) privacy ident = do
+        let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
-                        mgmt <- newManager defaultManagerSettings
                         flip runReaderT mgmt $ Qiniu.stat skey akey (bucket, rkey)
         case ws_result of
             Right st -> return $ Just $

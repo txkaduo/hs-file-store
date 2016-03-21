@@ -55,11 +55,14 @@ library
                      , lens
                      , http-client
                      , random
+
+                     -- require patched version: export seshManager
                      , wreq
+
                      , persistent
                      , safecopy
                      , hash-tx-utils
-                     , qiniu-utils
+                     , qiniu-utils >= 0.5
                      , parsec-tx-utils
 
   -- hs-source-dirs:      
