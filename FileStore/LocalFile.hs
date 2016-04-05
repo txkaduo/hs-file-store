@@ -18,11 +18,10 @@ import FileStore.Types
 
 
 data LocalFileStore i = LocalFileStore
-                            FilePath        -- ^ base dir
-                            (Maybe (Maybe MimeType -> i -> IO String))   -- ^ to make public download url
-                            (Maybe (UTCTime -> Maybe MimeType -> i -> IO String))
-                                                        -- ^ to make time-limited download url
-
+  { local_dir       :: FilePath                                              -- ^ base dir
+  , local_url       :: (Maybe (Maybe MimeType -> i -> IO String))            -- ^ to make public download url
+  , local_limit_url :: (Maybe (UTCTime -> Maybe MimeType -> i -> IO String)) -- ^ to make time-limited download url
+  }
 
 -- | base64-url-encoded
 base64UrlFilePath :: (Byteable a, IsString s) => a -> s

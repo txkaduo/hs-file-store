@@ -385,7 +385,7 @@ mkDownloadUrlFromAnyFileStore opts stores ttl m_mime ident = do
 
         liftM asum $ sequence $
                     [ if use_private_url then down_pri else return mzero
-                        -- ^ prefer private url when possible
+                        -- prefer private url when possible
                     , if use_public_url then down_pub else return mzero
                     ]
 
