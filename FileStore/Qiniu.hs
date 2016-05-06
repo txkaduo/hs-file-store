@@ -70,6 +70,10 @@ qiniuFileStoreBucket (QiniuFileStore _sess qc _path_prefix) privacy = bucket
                StorePrivate -> qcDualPrivateBucket qc
 
 
+qiniuFileStorePathPrefix :: QiniuFileStore i -> FilePath
+qiniuFileStorePathPrefix (QiniuFileStore _sess _qc path_prefix) = path_prefix
+
+
 instance
     ( ContentBasedFileIdent i, Byteable i, Eq i
     , MonadIO m, MonadLogger m, MonadCatch m, MonadError String m
