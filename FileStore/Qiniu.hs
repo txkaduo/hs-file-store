@@ -54,6 +54,14 @@ qiniuFileStoreEntryOfIdent (QiniuFileStore _sess qc path_prefix) privacy ident =
                StorePrivate -> qcDualPrivateBucket qc
 
 
+qiniuFileStoreSecretKey :: QiniuFileStore i -> Qiniu.SecretKey
+qiniuFileStoreSecretKey (QiniuFileStore _sess qc _path_prefix) = qcDualSecretKey qc
+
+
+qiniuFileStoreAccessKey :: QiniuFileStore i -> Qiniu.AccessKey
+qiniuFileStoreAccessKey (QiniuFileStore _sess qc _path_prefix) = qcDualAccessKey qc
+
+
 instance
     ( ContentBasedFileIdent i, Byteable i, Eq i
     , MonadIO m, MonadLogger m, MonadCatch m, MonadError String m
