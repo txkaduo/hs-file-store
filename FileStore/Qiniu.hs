@@ -62,6 +62,14 @@ qiniuFileStoreAccessKey :: QiniuFileStore i -> Qiniu.AccessKey
 qiniuFileStoreAccessKey (QiniuFileStore _sess qc _path_prefix) = qcDualAccessKey qc
 
 
+qiniuFileStoreBucket :: QiniuFileStore i -> StorePrivacy -> Bucket
+qiniuFileStoreBucket (QiniuFileStore _sess qc _path_prefix) privacy = bucket
+  where
+    bucket = case privacy of
+               StorePublic -> qcDualPublicBucket qc
+               StorePrivate -> qcDualPrivateBucket qc
+
+
 instance
     ( ContentBasedFileIdent i, Byteable i, Eq i
     , MonadIO m, MonadLogger m, MonadCatch m, MonadError String m
