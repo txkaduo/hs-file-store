@@ -42,13 +42,25 @@ type instance FileStoreIdent (QiniuFileStore i) = i
 
 type instance FileStoreStat (QiniuFileStore i) = QiniuSimpleStat
 
+
+-- | The resource key of a file
+qiniuFileStoreEntryOfIdent :: Byteable i => QiniuFileStore i -> StorePrivacy -> i -> Qiniu.Entry
+qiniuFileStoreEntryOfIdent (QiniuFileStore _sess qc path_prefix) privacy ident = (bucket, rkey)
+  where
+    rkey = base64UrlResourceKey path_prefix ident
+
+    bucket = case privacy of
+               StorePublic -> qcDualPublicBucket qc
+               StorePrivate -> qcDualPrivateBucket qc
+
+
 instance
     ( ContentBasedFileIdent i, Byteable i, Eq i
     , MonadIO m, MonadLogger m, MonadCatch m, MonadError String m
     ) =>
     FileStoreService m (QiniuFileStore i)
     where
-    fssSaveLBS (QiniuFileStore sess qc path_prefix) m_mime privacy lbs = do
+    fssSaveLBS store@(QiniuFileStore sess qc _path_prefix) m_mime privacy lbs = do
         pp <- mkPutPolicy (Scope bucket Nothing) save_key (fromIntegral (3600*24 :: Int))
         let upload_token = uploadToken skey akey pp
             fp = ""
@@ -60,16 +72,13 @@ instance
             Right _  -> return ident
         where
             ident = fileContentIdent lbs
-            rkey = base64UrlResourceKey path_prefix ident
+            (bucket, rkey) = qiniuFileStoreEntryOfIdent store privacy ident
             save_key = Nothing
             skey = qcDualSecretKey qc
             akey = qcDualAccessKey qc
 
-            bucket = case privacy of
-                       StorePublic -> qcDualPublicBucket qc
-                       StorePrivate -> qcDualPrivateBucket qc
 
-    fssDelete (QiniuFileStore sess qc path_prefix) privacy ident = do
+    fssDelete store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
         let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
                         flip runReaderT mgmt $ Qiniu.delete skey akey (bucket, rkey)
@@ -78,15 +87,12 @@ instance
             Left err | isResourceDoesNotExistError err -> return ()
                      | otherwise -> throwError $ either show show err
         where
-            rkey = base64UrlResourceKey path_prefix ident
+            (bucket, rkey) = qiniuFileStoreEntryOfIdent store privacy ident
             skey = qcDualSecretKey qc
             akey = qcDualAccessKey qc
 
-            bucket = case privacy of
-                       StorePublic -> qcDualPublicBucket qc
-                       StorePrivate -> qcDualPrivateBucket qc
 
-    fssCheckFile (QiniuFileStore sess qc path_prefix) privacy ident = do
+    fssCheckFile store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
         let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
                         flip runReaderT mgmt $ Qiniu.stat skey akey (bucket, rkey)
@@ -96,20 +102,13 @@ instance
                 | isResourceDoesNotExistError err -> return False
             Left err -> throwError $ either show show err
         where
-            rkey = base64UrlResourceKey path_prefix ident
+            (bucket, rkey) = qiniuFileStoreEntryOfIdent store privacy ident
             skey = qcDualSecretKey qc
             akey = qcDualAccessKey qc
 
-            bucket = case privacy of
-                       StorePublic -> qcDualPublicBucket qc
-                       StorePrivate -> qcDualPrivateBucket qc
 
-    fssFetchRemoteSaveAs (QiniuFileStore sess qc path_prefix) = Just $ \privacy url ident -> do
-        let bucket = case privacy of
-                       StorePublic -> qcDualPublicBucket qc
-                       StorePrivate -> qcDualPrivateBucket qc
-
-        let rkey = base64UrlResourceKey path_prefix ident
+    fssFetchRemoteSaveAs store@(QiniuFileStore sess qc _path_prefix) = Just $ \privacy url ident -> do
+        let (bucket, rkey) = qiniuFileStoreEntryOfIdent store privacy ident
         let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
                         flip runReaderT mgmt $
@@ -122,18 +121,18 @@ instance
             akey = qcDualAccessKey qc
 
 
-    fssPublicDownloadUrl (QiniuFileStore _sess qc path_prefix) =
+    fssPublicDownloadUrl store@(QiniuFileStore _sess qc _path_prefix) =
         Just $ \ _m_mime ident -> do
-                let rkey = base64UrlResourceKey path_prefix ident
-                    (bucket, m_domain) = (qcDualPublicBucket qc, qcDualPublicDomain qc)
+                let (bucket, rkey) = qiniuFileStoreEntryOfIdent store StorePublic ident
+                    m_domain       = qcDualPublicDomain qc
 
                 return $ resourceDownloadUrl m_domain bucket rkey
 
 
-    fssPrivateDownloadUrl (QiniuFileStore _sess qc path_prefix) =
+    fssPrivateDownloadUrl store@(QiniuFileStore _sess qc _path_prefix) =
         Just $ \expiry _m_mime ident -> do
-                let rkey = base64UrlResourceKey path_prefix ident
-                    (bucket, m_domain) = (qcDualPrivateBucket qc, qcDualPrivateDomain qc)
+                let (bucket, rkey) = qiniuFileStoreEntryOfIdent store StorePrivate ident
+                    m_domain       = qcDualPrivateDomain qc
 
                 salt :: Word64 <- liftIO randomIO
                 let qs = "_r=" <> show salt
@@ -146,22 +145,21 @@ instance
     fssDownloadInternal _ = Nothing
 
 
-    fssCopyToPublic (QiniuFileStore sess qc path_prefix) ident = do
+    fssCopyToPublic store@(QiniuFileStore sess qc _path_prefix) ident = do
         let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
                         flip runReaderT mgmt $ Qiniu.copy skey akey
-                                                    (pri_bucket, rkey) (pub_bucket, rkey)
+                                                    (pri_bucket, pri_rkey) (pub_bucket, pub_rkey)
         case ws_result of
             Right _ -> return True
             Left err | isResourceDoesNotExistError err -> return False
                      | otherwise -> throwError $ either show show err
         where
-            rkey = base64UrlResourceKey path_prefix ident
             skey = qcDualSecretKey qc
             akey = qcDualAccessKey qc
 
-            pub_bucket = qcDualPublicBucket qc
-            pri_bucket = qcDualPrivateBucket qc
+            (pub_bucket, pub_rkey) = qiniuFileStoreEntryOfIdent store StorePublic ident
+            (pri_bucket, pri_rkey) = qiniuFileStoreEntryOfIdent store StorePrivate ident
 
 instance
     ( ContentBasedFileIdent i, Byteable i, Eq i
@@ -169,7 +167,7 @@ instance
     ) =>
     FileStatService m (QiniuFileStore i)
     where
-    fssFileStat (QiniuFileStore sess qc path_prefix) privacy ident = do
+    fssFileStat store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
         let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
                         flip runReaderT mgmt $ Qiniu.stat skey akey (bucket, rkey)
@@ -181,10 +179,6 @@ instance
             Left err | isResourceDoesNotExistError err -> return Nothing
                      | otherwise -> throwError $ either show show err
         where
-            rkey = base64UrlResourceKey path_prefix ident
+            (bucket, rkey) = qiniuFileStoreEntryOfIdent store privacy ident
             skey = qcDualSecretKey qc
             akey = qcDualAccessKey qc
-
-            bucket = case privacy of
-                       StorePublic -> qcDualPublicBucket qc
-                       StorePrivate -> qcDualPrivateBucket qc
