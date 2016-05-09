@@ -70,6 +70,14 @@ qiniuFileStoreBucket (QiniuFileStore _sess qc _path_prefix) privacy = bucket
                StorePrivate -> qcDualPrivateBucket qc
 
 
+qiniuFileStoreDomain :: QiniuFileStore i -> StorePrivacy -> Maybe String
+qiniuFileStoreDomain (QiniuFileStore _sess qc _path_prefix) privacy = m_domain
+  where
+    m_domain = case privacy of
+                 StorePublic -> qcDualPublicDomain qc
+                 StorePrivate -> qcDualPrivateDomain qc
+
+
 qiniuFileStorePathPrefix :: QiniuFileStore i -> FilePath
 qiniuFileStorePathPrefix (QiniuFileStore _sess _qc path_prefix) = path_prefix
 
