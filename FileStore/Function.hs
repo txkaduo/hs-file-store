@@ -9,7 +9,6 @@ import Control.Lens
 import ClassyPrelude
 import Control.Monad.Logger
 import Control.Monad.Except hiding (mapM_, forM, forM_, mapM)
-import Data.Foldable                        (asum)
 import Control.Monad.Trans.Maybe
 
 import FileStore.Types
