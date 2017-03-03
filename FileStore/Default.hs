@@ -11,14 +11,11 @@ data FileStoreType = FileStoreTypeLocal
                     | FileStoreTypeQiniu
                     deriving (Eq, Ord, Enum, Bounded)
 
-instance SimpleStringRep FileStoreType where
+instance SimpleEncode FileStoreType where
     simpleEncode FileStoreTypeLocal = "local"
     simpleEncode FileStoreTypeQiniu = "qiniu"
 
-    simpleParser = makeSimpleParserByTable
-                    [ ( "local", FileStoreTypeLocal)
-                    , ( "qiniu", FileStoreTypeQiniu)
-                    ]
 
+$(deriveSimpleStringRepEnumBounded "FileStoreType")
 $(derivePersistFieldS "FileStoreType")
 $(deriveJsonS "FileStoreType")
