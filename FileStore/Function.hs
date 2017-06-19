@@ -393,3 +393,26 @@ mkDownloadUrlFromAnyFileStore opts stores ttl m_mime ident = do
         use_public_url = UsePublicUrl `elem` opts
         use_private_url = UsePrivateUrl `elem` opts
         check_exists = CheckExistence `elem` opts
+
+
+fssPrivateDownloadUrlHelper :: (MonadIO m, MonadLogger m, FileStoreService (ExceptT String m) a)
+                            => a
+                            -> Int
+                            -> FileStoreIdent a
+                            -> m (Maybe String)
+fssPrivateDownloadUrlHelper file_store ttl ident = do
+  case fssPrivateDownloadUrl file_store of
+    Nothing -> do
+      $logError $ "fssPrivateDownloadUrl return Nothing!"
+      return Nothing
+
+    Just mk_url -> do
+      now <- liftIO getCurrentTime
+      let expiry = addUTCTime (fromIntegral (ttl :: Int)) now
+
+      err_or_url <- runExceptT $ mk_url expiry Nothing ident
+      case err_or_url of
+        Right x -> return $ Just x
+        Left err -> do
+          $logError $ "Cannot make private download url: " <> fromString err
+          return Nothing
