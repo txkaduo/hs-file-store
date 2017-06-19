@@ -191,7 +191,7 @@ saveLbsToFileStores stores m_mime privacy lbs = do
             m_fetch_func = fmap (\f -> f privacy) $ fssFetchRemoteSaveAs store
         ident_ref <- liftIO $ newIORef Nothing
         return (x, ident_ref, m_down_url, m_fetch_func)
-    
+
     -- 第一轮：只找能提供下载能力的平台
     down_url_ref <- liftIO $ newIORef Nothing
     forM_ infos $
@@ -241,7 +241,7 @@ saveLbsToFileStores stores m_mime privacy lbs = do
                                 liftIO $ writeIORef down_url_ref (Just down_url)
 
                 _ -> return () -- 其它情况，先不处理
-        
+
     -- 第二轮：未完成，且能从远程fetch的平台
     m_known_down_url <- liftIO $ readIORef down_url_ref
     case m_known_down_url of
