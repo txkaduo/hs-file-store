@@ -39,7 +39,7 @@ type family FileStoreStat a :: *
 -- | 有㘹空间可能同时支持公开访问及私有访问
 -- 对于某些存储服务有意义，假如七牛
 data StorePrivacy = StorePrivate | StorePublic
-                deriving (Eq, Ord, Enum, Bounded)
+  deriving (Show, Eq, Ord, Enum, Bounded)
 
 -- | 可用于保存文件的某种服务
 class (Eq (FileStoreIdent a), Monad m) => FileStoreService m a where
