@@ -2,13 +2,16 @@
 {-# LANGUAGE FunctionalDependencies #-}
 module FileStore.Types where
 
+-- {{{1 imports
 import ClassyPrelude hiding (try)
 import qualified Data.ByteString.Lazy       as LB
 import Crypto.Hash.TX.Utils                 (md5HashLBS, MD5Hash, sha256HashLBS, SHA256Hash)
 
 import Control.Monad.Catch                  (try)
 import Control.Monad.Except
+import Text.Parsec.TX.Utils
 import Network.Mime                         (MimeType)
+-- }}}1
 
 
 -- | 文件标识可以仅仅从文件内容就可以计算出来的情况
@@ -40,6 +43,16 @@ type family FileStoreStat a :: *
 -- 对于某些存储服务有意义，假如七牛
 data StorePrivacy = StorePrivate | StorePublic
   deriving (Show, Eq, Ord, Enum, Bounded)
+
+-- {{{1 instances
+instance SimpleEncode StorePrivacy where
+    simpleEncode StorePrivate = "private"
+    simpleEncode StorePublic  = "public"
+
+$(deriveSimpleStringRepEnumBounded "StorePrivacy")
+$(derivePersistFieldS "StorePrivacy")
+$(deriveJsonS "StorePrivacy")
+-- }}}1
 
 -- | 可用于保存文件的某种服务
 class (Eq (FileStoreIdent a), Monad m) => FileStoreService m a where
@@ -195,3 +208,6 @@ tryMonadError f = liftM Right f `catchError` (return . Left)
 tryIOError' :: MonadCatch m => m a -> m (Either IOError a)
 tryIOError' = try
 
+
+
+-- vim: set foldmethod=marker:
