@@ -153,18 +153,20 @@ instance
         Just $ \ _m_mime ident -> do
                 let (bucket, rkey) = qiniuFileStoreEntryOfIdent store StorePublic ident
                     m_domain       = qcDualPublicDomain qc
+                    if_ssl         = qcDualPublicSslUrl qc
 
-                return $ resourceDownloadUrl m_domain bucket rkey
+                return $ resourceDownloadUrl if_ssl m_domain bucket rkey
 
 
     fssPrivateDownloadUrl store@(QiniuFileStore _sess qc _path_prefix) =
         Just $ \expiry _m_mime ident -> do
                 let (bucket, rkey) = qiniuFileStoreEntryOfIdent store StorePrivate ident
                     m_domain       = qcDualPrivateDomain qc
+                    if_ssl         = qcDualPrivateSslUrl qc
 
                 salt :: Word64 <- liftIO randomIO
                 let qs = "_r=" <> show salt
-                return $ authedResourceDownloadUrl' skey akey expiry m_domain bucket rkey (Just qs)
+                return $ authedResourceDownloadUrl' skey akey expiry if_ssl m_domain bucket rkey (Just qs)
                 where
                     skey = qcDualSecretKey qc
                     akey = qcDualAccessKey qc
