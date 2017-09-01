@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                file-store
-version:             0.3.1.0
+version:             0.3.3.0
 -- synopsis:            
 -- description:         
 license:             BSD3
@@ -62,7 +62,7 @@ library
                      , persistent
                      , safecopy
                      , hash-tx-utils
-                     , qiniu-utils >= 0.6
+                     , qiniu-utils >= 0.7
                      , parsec-tx-utils >= 0.3
 
   -- hs-source-dirs:      

@@ -92,8 +92,9 @@ instance
         pp <- mkPutPolicy (Scope bucket Nothing) save_key (fromIntegral (3600*24 :: Int))
         let upload_token = uploadToken skey akey pp
             fp = ""
+            region = qcDualRegion qc
         ws_result <- liftM packError $
-                        flip runReaderT (sess, upload_token) $
+                        flip runReaderT (sess, region, upload_token) $
                             uploadOneShot (Just $ rkey) m_mime fp lbs
         case ws_result of
             Left err -> throwError $ either show show err
