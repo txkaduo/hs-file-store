@@ -84,7 +84,7 @@ qiniuFileStorePathPrefix (QiniuFileStore _sess _qc path_prefix) = path_prefix
 
 instance
     ( ContentBasedFileIdent i, Byteable i, Eq i
-    , MonadIO m, MonadLogger m, MonadCatch m, MonadError String m
+    , MonadIO m, MonadBaseControl IO m, MonadLogger m, MonadCatch m, MonadError String m
     ) =>
     FileStoreService m (QiniuFileStore i)
     where
@@ -123,7 +123,7 @@ instance
 
     fssCheckFile store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
         let mgmt = WS.seshManager sess
-        ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
+        ws_result <- liftM packError $ ioErrorToMonadError $ do
                         flip runReaderT mgmt $ Qiniu.stat skey akey (bucket, rkey)
         case ws_result of
             Right _ -> return True
@@ -194,13 +194,13 @@ instance
 
 instance
     ( ContentBasedFileIdent i, Byteable i, Eq i
-    , MonadIO m, MonadLogger m, MonadCatch m, MonadError String m
+    , MonadIO m, MonadBaseControl IO m, MonadLogger m, MonadCatch m, MonadError String m
     ) =>
     FileStatService m (QiniuFileStore i)
     where
     fssFileStat store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
         let mgmt = WS.seshManager sess
-        ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
+        ws_result <- liftM packError $ ioErrorToMonadError $ do
                         flip runReaderT mgmt $ Qiniu.stat skey akey (bucket, rkey)
         case ws_result of
             Right st -> return $ Just $
