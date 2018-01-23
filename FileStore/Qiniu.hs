@@ -108,9 +108,8 @@ instance
 
 
     fssDelete store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
-        let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
-                        flip runReaderT mgmt $ Qiniu.delete skey akey (bucket, rkey)
+                        flip runReaderT sess $ Qiniu.delete skey akey (bucket, rkey)
         case ws_result of
             Right _ -> return ()
             Left err | isResourceDoesNotExistError err -> return ()
@@ -122,9 +121,8 @@ instance
 
 
     fssCheckFile store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
-        let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ do
-                        flip runReaderT mgmt $ Qiniu.stat skey akey (bucket, rkey)
+                        flip runReaderT sess $ Qiniu.stat skey akey (bucket, rkey)
         case ws_result of
             Right _ -> return True
             Left err
@@ -138,9 +136,8 @@ instance
 
     fssFetchRemoteSaveAs store@(QiniuFileStore sess qc _path_prefix) = Just $ \privacy url ident -> do
         let (bucket, rkey) = qiniuFileStoreEntryOfIdent store privacy ident
-        let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
-                        flip runReaderT mgmt $
+                        flip runReaderT sess $
                             Qiniu.fetch skey akey (fromString url) (Scope bucket (Just rkey))
         case ws_result of
             Right _ -> return True
@@ -177,9 +174,8 @@ instance
 
 
     fssCopyToPublic store@(QiniuFileStore sess qc _path_prefix) ident = do
-        let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
-                        flip runReaderT mgmt $ Qiniu.copy skey akey
+                        flip runReaderT sess $ Qiniu.copy skey akey
                                                     (pri_bucket, pri_rkey) (pub_bucket, pub_rkey)
         case ws_result of
             Right _ -> return True
@@ -199,9 +195,8 @@ instance
     FileStatService m (QiniuFileStore i)
     where
     fssFileStat store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
-        let mgmt = WS.seshManager sess
         ws_result <- liftM packError $ ioErrorToMonadError $ do
-                        flip runReaderT mgmt $ Qiniu.stat skey akey (bucket, rkey)
+                        flip runReaderT sess $ Qiniu.stat skey akey (bucket, rkey)
         case ws_result of
             Right st -> return $ Just $
                             QiniuSimpleStat
