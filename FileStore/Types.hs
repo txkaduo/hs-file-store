@@ -11,6 +11,8 @@ import Control.Monad.Catch                  (try)
 import Control.Monad.Except
 import Text.Parsec.TX.Utils
 import Network.Mime                         (MimeType)
+
+import qualified Qiniu as Q
 -- }}}1
 
 
@@ -24,6 +26,9 @@ instance ContentBasedFileIdent MD5Hash where
 
 instance ContentBasedFileIdent SHA256Hash where
     fileContentIdent = sha256HashLBS
+
+instance ContentBasedFileIdent Q.EtagHash where
+    fileContentIdent = Q.hetagL
 
 
 class HasFileSize a where
