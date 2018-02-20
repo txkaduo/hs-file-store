@@ -25,7 +25,7 @@ data QiniuFileStore i = QiniuFileStore
 
 -- | base64-url-encoded
 base64UrlResourceKey :: Byteable a => FilePath -> a -> ResourceKey
-base64UrlResourceKey path_prefix = ResourceKey . (path_prefix </>) . C8.unpack . B64U.encode . toBytes
+base64UrlResourceKey path_prefix = ResourceKey . fromString . (path_prefix </>) . C8.unpack . B64U.encode . toBytes
 
 data QiniuSimpleStat = QiniuSimpleStat
                             Word64
@@ -70,7 +70,7 @@ qiniuFileStoreBucket (QiniuFileStore _sess qc _path_prefix) privacy = bucket
                StorePrivate -> qcDualPrivateBucket qc
 
 
-qiniuFileStoreDomain :: QiniuFileStore i -> StorePrivacy -> Maybe String
+qiniuFileStoreDomain :: QiniuFileStore i -> StorePrivacy -> Maybe Text
 qiniuFileStoreDomain (QiniuFileStore _sess qc _path_prefix) privacy = m_domain
   where
     m_domain = case privacy of
@@ -92,9 +92,13 @@ instance
         pp <- mkPutPolicy (Scope bucket Nothing) save_key (fromIntegral (3600*24 :: Int))
         let upload_token = uploadToken skey akey pp
             fp = ""
-            region = qcDualRegion qc
+            region = case privacy of
+                       StorePublic -> qcDualPublicRegion qc
+                       StorePrivate -> qcDualPrivateRegion qc
+
         ws_result <- liftM packError $
-                        flip runReaderT (sess, region, upload_token) $
+                        flip runReaderT sess $
+                          flip runReaderT (region, upload_token) $
                             uploadOneShot (Just $ rkey) m_mime fp lbs
         case ws_result of
             Left err -> throwError $ either show show err
@@ -108,8 +112,10 @@ instance
 
 
     fssDelete store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
-        ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
-                        flip runReaderT sess $ Qiniu.delete skey akey (bucket, rkey)
+        ws_result <- liftM packError $ ioErrorToMonadError $ do
+                        flip runReaderT sess $
+                          flip runReaderT (skey, akey) $
+                            Qiniu.delete (bucket, rkey)
         case ws_result of
             Right _ -> return ()
             Left err | isResourceDoesNotExistError err -> return ()
@@ -122,7 +128,9 @@ instance
 
     fssCheckFile store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
         ws_result <- liftM packError $ ioErrorToMonadError $ do
-                        flip runReaderT sess $ Qiniu.stat skey akey (bucket, rkey)
+                        flip runReaderT sess $
+                          flip runReaderT (skey, akey) $
+                            Qiniu.stat (bucket, rkey)
         case ws_result of
             Right _ -> return True
             Left err
@@ -136,9 +144,10 @@ instance
 
     fssFetchRemoteSaveAs store@(QiniuFileStore sess qc _path_prefix) = Just $ \privacy url ident -> do
         let (bucket, rkey) = qiniuFileStoreEntryOfIdent store privacy ident
-        ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
+        ws_result <- liftM packError $ ioErrorToMonadError $ do
                         flip runReaderT sess $
-                            Qiniu.fetch skey akey (fromString url) (Scope bucket (Just rkey))
+                          flip runReaderT (skey, akey) $
+                            Qiniu.fetch (fromString url) (Scope bucket (Just rkey))
         case ws_result of
             Right _ -> return True
             Left err -> throwError $ either show show err
@@ -164,7 +173,7 @@ instance
 
                 salt :: Word64 <- liftIO randomIO
                 let qs = "_r=" <> show salt
-                return $ authedResourceDownloadUrl' skey akey expiry if_ssl m_domain bucket rkey (Just qs)
+                return $ unpack $ authedResourceDownloadUrl' skey akey expiry if_ssl m_domain bucket rkey (Just qs)
                 where
                     skey = qcDualSecretKey qc
                     akey = qcDualAccessKey qc
@@ -174,9 +183,10 @@ instance
 
 
     fssCopyToPublic store@(QiniuFileStore sess qc _path_prefix) ident = do
-        ws_result <- liftM packError $ ioErrorToMonadError $ liftIO $ do
-                        flip runReaderT sess $ Qiniu.copy skey akey
-                                                    (pri_bucket, pri_rkey) (pub_bucket, pub_rkey)
+        ws_result <- liftM packError $ ioErrorToMonadError $ do
+                        flip runReaderT sess $
+                          flip runReaderT (skey, akey) $
+                            Qiniu.copy (pri_bucket, pri_rkey) (pub_bucket, pub_rkey)
         case ws_result of
             Right _ -> return True
             Left err | isResourceDoesNotExistError err -> return False
@@ -196,12 +206,14 @@ instance
     where
     fssFileStat store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
         ws_result <- liftM packError $ ioErrorToMonadError $ do
-                        flip runReaderT sess $ Qiniu.stat skey akey (bucket, rkey)
+                        flip runReaderT sess $
+                          flip runReaderT (skey, akey) $
+                            Qiniu.stat (bucket, rkey)
         case ws_result of
             Right st -> return $ Just $
                             QiniuSimpleStat
                                 (fromIntegral $ Qiniu.eStatFsize st)
-                                (fromString $ Qiniu.eStatMimeType st)
+                                (encodeUtf8 $ Qiniu.eStatMimeType st)
             Left err | isResourceDoesNotExistError err -> return Nothing
                      | otherwise -> throwError $ either show show err
         where
