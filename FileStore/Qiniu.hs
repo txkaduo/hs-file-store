@@ -21,7 +21,6 @@ import FileStore.Types
 data QiniuFileStore i = QiniuFileStore
                             WS.Session
                             QiniuDualConfig
-                            FilePath        -- ^ url-path prefix
 
 -- | base64-url-encoded
 base64UrlResourceKey :: Byteable a => FilePath -> a -> ResourceKey
@@ -45,25 +44,26 @@ type instance FileStoreStat (QiniuFileStore i) = QiniuSimpleStat
 
 -- | The resource key of a file
 qiniuFileStoreEntryOfIdent :: Byteable i => QiniuFileStore i -> StorePrivacy -> i -> Qiniu.Entry
-qiniuFileStoreEntryOfIdent (QiniuFileStore _sess qc path_prefix) privacy ident = (bucket, rkey)
+qiniuFileStoreEntryOfIdent (QiniuFileStore _sess qc) privacy ident = (bucket, rkey)
   where
-    rkey = base64UrlResourceKey path_prefix ident
+    rkey = base64UrlResourceKey (unpack path_prefix) ident
 
-    bucket = case privacy of
-               StorePublic -> qcDualPublicBucket qc
-               StorePrivate -> qcDualPrivateBucket qc
+    (bucket, path_prefix) =
+      case privacy of
+        StorePublic -> (qcDualPublicBucket &&& qcDualPublicPathPrefix)qc
+        StorePrivate -> (qcDualPrivateBucket &&& qcDualPrivatePathPrefix) qc
 
 
 qiniuFileStoreSecretKey :: QiniuFileStore i -> Qiniu.SecretKey
-qiniuFileStoreSecretKey (QiniuFileStore _sess qc _path_prefix) = qcDualSecretKey qc
+qiniuFileStoreSecretKey (QiniuFileStore _sess qc) = qcDualSecretKey qc
 
 
 qiniuFileStoreAccessKey :: QiniuFileStore i -> Qiniu.AccessKey
-qiniuFileStoreAccessKey (QiniuFileStore _sess qc _path_prefix) = qcDualAccessKey qc
+qiniuFileStoreAccessKey (QiniuFileStore _sess qc) = qcDualAccessKey qc
 
 
 qiniuFileStoreBucket :: QiniuFileStore i -> StorePrivacy -> Bucket
-qiniuFileStoreBucket (QiniuFileStore _sess qc _path_prefix) privacy = bucket
+qiniuFileStoreBucket (QiniuFileStore _sess qc) privacy = bucket
   where
     bucket = case privacy of
                StorePublic -> qcDualPublicBucket qc
@@ -71,15 +71,11 @@ qiniuFileStoreBucket (QiniuFileStore _sess qc _path_prefix) privacy = bucket
 
 
 qiniuFileStoreDomain :: QiniuFileStore i -> StorePrivacy -> Maybe Text
-qiniuFileStoreDomain (QiniuFileStore _sess qc _path_prefix) privacy = m_domain
+qiniuFileStoreDomain (QiniuFileStore _sess qc) privacy = m_domain
   where
     m_domain = case privacy of
                  StorePublic -> qcDualPublicDomain qc
                  StorePrivate -> qcDualPrivateDomain qc
-
-
-qiniuFileStorePathPrefix :: QiniuFileStore i -> FilePath
-qiniuFileStorePathPrefix (QiniuFileStore _sess _qc path_prefix) = path_prefix
 
 
 instance
@@ -88,7 +84,7 @@ instance
     ) =>
     FileStoreService m (QiniuFileStore i)
     where
-    fssSaveLBS store@(QiniuFileStore sess qc _path_prefix) m_mime privacy lbs = do
+    fssSaveLBS store@(QiniuFileStore sess qc) m_mime privacy lbs = do
         pp <- mkPutPolicy (Scope bucket Nothing) save_key (fromIntegral (3600*24 :: Int))
         let upload_token = uploadToken skey akey pp
             fp = ""
@@ -111,7 +107,7 @@ instance
             akey = qcDualAccessKey qc
 
 
-    fssDelete store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
+    fssDelete store@(QiniuFileStore sess qc) privacy ident = do
         ws_result <- liftM packError $ ioErrorToMonadError $ do
                         flip runReaderT sess $
                           flip runReaderT (skey, akey) $
@@ -126,7 +122,7 @@ instance
             akey = qcDualAccessKey qc
 
 
-    fssCheckFile store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
+    fssCheckFile store@(QiniuFileStore sess qc) privacy ident = do
         ws_result <- liftM packError $ ioErrorToMonadError $ do
                         flip runReaderT sess $
                           flip runReaderT (skey, akey) $
@@ -142,7 +138,7 @@ instance
             akey = qcDualAccessKey qc
 
 
-    fssFetchRemoteSaveAs store@(QiniuFileStore sess qc _path_prefix) = Just $ \privacy url ident -> do
+    fssFetchRemoteSaveAs store@(QiniuFileStore sess qc) = Just $ \privacy url ident -> do
         let (bucket, rkey) = qiniuFileStoreEntryOfIdent store privacy ident
         ws_result <- liftM packError $ ioErrorToMonadError $ do
                         flip runReaderT sess $
@@ -156,7 +152,7 @@ instance
             akey = qcDualAccessKey qc
 
 
-    fssPublicDownloadUrl store@(QiniuFileStore _sess qc _path_prefix) =
+    fssPublicDownloadUrl store@(QiniuFileStore _sess qc) =
         Just $ \ _m_mime ident -> do
                 let (bucket, rkey) = qiniuFileStoreEntryOfIdent store StorePublic ident
                     m_domain       = qcDualPublicDomain qc
@@ -165,7 +161,7 @@ instance
                 return $ resourceDownloadUrl if_ssl m_domain bucket rkey
 
 
-    fssPrivateDownloadUrl store@(QiniuFileStore _sess qc _path_prefix) =
+    fssPrivateDownloadUrl store@(QiniuFileStore _sess qc) =
         Just $ \expiry _m_mime ident -> do
                 let (bucket, rkey) = qiniuFileStoreEntryOfIdent store StorePrivate ident
                     m_domain       = qcDualPrivateDomain qc
@@ -182,7 +178,7 @@ instance
     fssDownloadInternal _ = Nothing
 
 
-    fssCopyToPublic store@(QiniuFileStore sess qc _path_prefix) ident = do
+    fssCopyToPublic store@(QiniuFileStore sess qc) ident = do
         ws_result <- liftM packError $ ioErrorToMonadError $ do
                         flip runReaderT sess $
                           flip runReaderT (skey, akey) $
@@ -204,7 +200,7 @@ instance
     ) =>
     FileStatService m (QiniuFileStore i)
     where
-    fssFileStat store@(QiniuFileStore sess qc _path_prefix) privacy ident = do
+    fssFileStat store@(QiniuFileStore sess qc) privacy ident = do
         ws_result <- liftM packError $ ioErrorToMonadError $ do
                         flip runReaderT sess $
                           flip runReaderT (skey, akey) $
