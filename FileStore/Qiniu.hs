@@ -13,7 +13,7 @@ import qualified Network.Wreq.Session       as WS
 
 import Data.Byteable                        (Byteable(..))
 import System.Random                        (randomIO)
-import Qiniu                                as Qiniu
+import Qiniu                                as Qiniu hiding (HasMimeType(..), HasFileSize(..))
 
 import FileStore.Types
 
