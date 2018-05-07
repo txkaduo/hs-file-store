@@ -55,10 +55,7 @@ library
                      , lens
                      , http-client
                      , random
-
-                     -- require patched version: export seshManager
                      , wreq
-
                      , persistent
                      , safecopy
                      , hash-tx-utils
