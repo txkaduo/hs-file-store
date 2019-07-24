@@ -14,6 +14,10 @@ import Network.Mime                         (MimeType)
 
 import Data.Byteable                        (Byteable(..))
 
+#if MIN_VERSION_classy_prelude(1, 5, 0)
+import Control.Monad.Catch                  (MonadCatch)
+#endif
+
 import FileStore.Types
 
 
@@ -63,7 +67,7 @@ instance
         case err_or of
             Left err
                     | isDoesNotExistError err -> return ()
-                    | otherwise  -> throwM err
+                    | otherwise  -> throwIO err
 
             Right _ -> return ()
 
@@ -117,7 +121,7 @@ downloadFromLocalStore (LocalFileStore base_dir _ _) ident = do
         case err_or of
             Left err
                     | isDoesNotExistError err -> return Nothing
-                    | otherwise  -> throwM err
+                    | otherwise  -> throwIO err
 
             Right x -> return $ Just x
 
@@ -133,7 +137,7 @@ instance
             Right fsize -> return $ Just $ LocalFileStat fsize
             Left err
                 | isDoesNotExistError err -> return Nothing
-                | otherwise  -> throwM err
+                | otherwise  -> throwIO err
         where
             fp      = base_dir </> base64UrlFilePath ident
 

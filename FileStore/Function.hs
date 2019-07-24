@@ -11,6 +11,10 @@ import Control.Monad.Logger
 import Control.Monad.Except hiding (mapM_, forM, forM_, mapM)
 import Control.Monad.Trans.Maybe
 
+#if MIN_VERSION_classy_prelude(1, 5, 0)
+import Control.Monad.Catch                  (MonadCatch)
+#endif
+
 import FileStore.Types
 
 

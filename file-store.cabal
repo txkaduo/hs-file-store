@@ -45,6 +45,7 @@ library
                      , byteable
                      , monad-logger
                      , transformers
+                     , monad-control
                      , mtl
                      , exceptions
                      , mime-types

@@ -8,6 +8,9 @@ import qualified Data.ByteString.Lazy       as LB
 import Crypto.Hash.TX.Utils                 (md5HashLBS, MD5Hash, sha256HashLBS, SHA256Hash)
 
 import Control.Monad.Catch                  (try)
+#if MIN_VERSION_classy_prelude(1, 5, 0)
+import Control.Monad.Catch                  (MonadCatch)
+#endif
 import Control.Monad.Except
 import Text.Parsec.TX.Utils
 import Network.Mime                         (MimeType)

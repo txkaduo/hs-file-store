@@ -13,6 +13,11 @@ import qualified Network.Wreq.Session       as WS
 
 import Data.Byteable                        (Byteable(..))
 import System.Random                        (randomIO)
+
+#if MIN_VERSION_classy_prelude(1, 5, 0)
+import Control.Monad.Catch                  (MonadCatch)
+#endif
+
 import Qiniu                                as Qiniu hiding (HasMimeType(..), HasFileSize(..))
 
 import FileStore.Types
@@ -80,7 +85,7 @@ qiniuFileStoreDomain (QiniuFileStore _sess qc) privacy = m_domain
 
 instance
     ( ContentBasedFileIdent i, Byteable i, Eq i
-    , MonadIO m, MonadBaseControl IO m, MonadLogger m, MonadCatch m, MonadError String m
+    , MonadIO m, MonadLogger m, MonadCatch m, MonadError String m
     ) =>
     FileStoreService m (QiniuFileStore i)
     where
@@ -196,7 +201,7 @@ instance
 
 instance
     ( ContentBasedFileIdent i, Byteable i, Eq i
-    , MonadIO m, MonadBaseControl IO m, MonadLogger m, MonadCatch m, MonadError String m
+    , MonadIO m, MonadLogger m, MonadCatch m, MonadError String m
     ) =>
     FileStatService m (QiniuFileStore i)
     where
