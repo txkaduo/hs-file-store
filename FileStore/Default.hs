@@ -9,7 +9,7 @@ import Text.Parsec.TX.Utils
 -- 这不必是完整的列表，只是作为一种识别，方便保存于数据库、文件等
 data FileStoreType = FileStoreTypeLocal
                     | FileStoreTypeQiniu
-                    deriving (Eq, Ord, Enum, Bounded)
+                    deriving (Eq, Ord, Enum, Bounded, Show)
 
 instance SimpleEncode FileStoreType where
     simpleEncode FileStoreTypeLocal = "local"
