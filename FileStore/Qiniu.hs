@@ -24,8 +24,10 @@ import FileStore.Types
 
 
 data QiniuFileStore i = QiniuFileStore
-                            WS.Session
-                            QiniuDualConfig
+  { qfsSession         :: WS.Session
+  , qfsQiniuDualConfig :: QiniuDualConfig
+  }
+
 
 -- | base64-url-encoded
 base64UrlResourceKey :: Byteable a => FilePath -> a -> ResourceKey
@@ -48,23 +50,30 @@ type instance FileStoreStat (QiniuFileStore i) = QiniuSimpleStat
 
 
 -- | The resource key of a file
-qiniuFileStoreEntryOfIdent :: Byteable i => QiniuFileStore i -> StorePrivacy -> i -> Qiniu.Entry
-qiniuFileStoreEntryOfIdent (QiniuFileStore _sess qc) privacy ident = (bucket, rkey)
+qiniuFileStoreEntryOfIdent' :: Byteable i => QiniuDualConfig -> StorePrivacy -> i -> Qiniu.Entry
+qiniuFileStoreEntryOfIdent' dual_qc privacy = qiniuFileStoreEntryOfIdent'' qc
   where
-    rkey = base64UrlResourceKey (unpack path_prefix) ident
+    qc = case privacy of
+           StorePublic -> pubOfQiniuDualConfig dual_qc
+           StorePrivate -> priOfQiniuDualConfig dual_qc
 
-    (bucket, path_prefix) =
-      case privacy of
-        StorePublic -> (qcDualPublicBucket &&& qcDualPublicPathPrefix)qc
-        StorePrivate -> (qcDualPrivateBucket &&& qcDualPrivatePathPrefix) qc
+
+qiniuFileStoreEntryOfIdent'' :: Byteable i => QiniuConfig -> i -> Qiniu.Entry
+qiniuFileStoreEntryOfIdent'' qc ident = (bucket, rkey)
+  where rkey = base64UrlResourceKey (unpack path_prefix) ident
+        (bucket, path_prefix) = (qiniuConfigBucket &&& qiniuConfigPathPrefix) qc
+
+
+qiniuFileStoreEntryOfIdent :: Byteable i => QiniuFileStore i -> StorePrivacy -> i -> Qiniu.Entry
+qiniuFileStoreEntryOfIdent = qiniuFileStoreEntryOfIdent' . qfsQiniuDualConfig
 
 
 qiniuFileStoreSecretKey :: QiniuFileStore i -> Qiniu.SecretKey
-qiniuFileStoreSecretKey (QiniuFileStore _sess qc) = qcDualSecretKey qc
+qiniuFileStoreSecretKey = qcDualSecretKey . qfsQiniuDualConfig
 
 
 qiniuFileStoreAccessKey :: QiniuFileStore i -> Qiniu.AccessKey
-qiniuFileStoreAccessKey (QiniuFileStore _sess qc) = qcDualAccessKey qc
+qiniuFileStoreAccessKey  = qcDualAccessKey . qfsQiniuDualConfig
 
 
 qiniuFileStoreBucket :: QiniuFileStore i -> StorePrivacy -> Bucket
