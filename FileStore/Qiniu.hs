@@ -59,9 +59,13 @@ qiniuFileStoreEntryOfIdent' dual_qc privacy = qiniuFileStoreEntryOfIdent'' qc
 
 
 qiniuFileStoreEntryOfIdent'' :: Byteable i => QiniuConfig -> i -> Qiniu.Entry
-qiniuFileStoreEntryOfIdent'' qc ident = (bucket, rkey)
-  where rkey = base64UrlResourceKey (unpack path_prefix) ident
-        (bucket, path_prefix) = (qiniuConfigBucket &&& qiniuConfigPathPrefix) qc
+qiniuFileStoreEntryOfIdent'' qc ident =
+  (qiniuConfigBucket &&& flip qiniuFileStoreResourceKeyOfIdent ident) qc
+
+
+qiniuFileStoreResourceKeyOfIdent :: Byteable i => QiniuConfig -> i -> Qiniu.ResourceKey
+qiniuFileStoreResourceKeyOfIdent qc ident = base64UrlResourceKey (unpack path_prefix) ident
+  where path_prefix = qiniuConfigPathPrefix qc
 
 
 qiniuFileStoreEntryOfIdent :: Byteable i => QiniuFileStore i -> StorePrivacy -> i -> Qiniu.Entry
