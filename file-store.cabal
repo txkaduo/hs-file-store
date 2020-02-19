@@ -60,7 +60,7 @@ library
                      , persistent
                      , safecopy
                      , hash-tx-utils
-                     , qiniu-utils >= 0.10
+                     , qiniu-utils >= 0.13
                      , parsec-tx-utils >= 0.3
 
   -- hs-source-dirs:      
