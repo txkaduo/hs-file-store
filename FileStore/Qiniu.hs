@@ -188,7 +188,7 @@ instance
     fssPublicDownloadUrl store =
         Just $ \ _m_mime ident -> do
                 let (bucket, rkey) = qiniuFileStoreEntryOfIdent store StorePublic ident
-                    m_domain       = qiniuFileStoreDomain store StorePublic 
+                    m_domain       = qiniuFileStoreDomain store StorePublic
                     if_ssl         = qiniuFileStoreSslUrl store StorePublic
 
                 return $ resourceDownloadUrl if_ssl m_domain bucket rkey
@@ -197,8 +197,8 @@ instance
     fssPrivateDownloadUrl store =
         Just $ \expiry _m_mime ident -> do
                 let (bucket, rkey) = qiniuFileStoreEntryOfIdent store StorePrivate ident
-                    m_domain       = qiniuFileStoreDomain store StorePublic 
-                    if_ssl         = qiniuFileStoreSslUrl store StorePublic
+                    m_domain       = qiniuFileStoreDomain store StorePrivate
+                    if_ssl         = qiniuFileStoreSslUrl store StorePrivate
 
                 salt :: Word64 <- liftIO randomIO
                 let qs = "_r=" <> show salt
