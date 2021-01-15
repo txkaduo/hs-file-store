@@ -21,7 +21,7 @@ import qualified Qiniu as Q
 
 -- | 文件标识可以仅仅从文件内容就可以计算出来的情况
 -- 比如使用各种hash算法得到的值
-class ContentBasedFileIdent a where
+class (Eq a) => ContentBasedFileIdent a where
     fileContentIdent :: LB.ByteString -> a
 
 instance ContentBasedFileIdent MD5Hash where
