@@ -21,6 +21,7 @@ library
                        FileStore.Qiniu
                        FileStore.Function
                        FileStore.Default
+                       FileStore
   -- other-modules:       
   default-extensions:  TemplateHaskell
                        QuasiQuotes
