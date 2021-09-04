@@ -29,7 +29,7 @@ data LocalFileStore i = LocalFileStore
 
 -- | base64-url-encoded
 base64UrlFilePath :: (Byteable a, IsString s) => a -> s
-base64UrlFilePath = fromString . C8.unpack . B64U.encode . toBytes
+base64UrlFilePath = fromString . C8.unpack . B64U.encodeBase64' . toBytes
 
 data LocalFileStat = LocalFileStat Word64
 

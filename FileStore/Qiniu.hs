@@ -32,7 +32,7 @@ data QiniuFileStore i = QiniuFileStore
 
 -- | base64-url-encoded
 base64UrlResourceKey :: Byteable a => FilePath -> a -> ResourceKey
-base64UrlResourceKey path_prefix = ResourceKey . fromString . (path_prefix </>) . C8.unpack . B64U.encode . toBytes
+base64UrlResourceKey path_prefix = ResourceKey . fromString . (path_prefix </>) . C8.unpack . B64U.encodeBase64' . toBytes
 
 data QiniuSimpleStat = QiniuSimpleStat
                             Word64
