@@ -12,6 +12,7 @@ import Control.Monad.Catch                  (try)
 import Control.Monad.Catch                  (MonadCatch)
 #endif
 import Control.Monad.Except
+import Data.Kind (Type)
 import Text.Parsec.TX.Utils
 import Network.Mime                         (MimeType)
 
@@ -42,10 +43,10 @@ class HasMimeType a where
 
 
 -- | 文件在存储平台的唯一标识
-type family FileStoreIdent a :: *
+type family FileStoreIdent a :: Type
 
 -- | 文件在存储平台内的简单元数据
-type family FileStoreStat a :: *
+type family FileStoreStat a :: Type
 
 -- | 有㘹空间可能同时支持公开访问及私有访问
 -- 对于某些存储服务有意义，假如七牛
