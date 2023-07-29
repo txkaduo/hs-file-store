@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE CPP #-}
 module FileStore.Types where
 
 -- {{{1 imports
@@ -40,7 +41,6 @@ class HasFileSize a where
 
 class HasMimeType a where
     getMimeType :: a -> Maybe MimeType
-
 
 -- | 文件在存储平台的唯一标识
 type family FileStoreIdent a :: Type

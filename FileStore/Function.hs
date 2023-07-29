@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 module FileStore.Function where
 import qualified Data.ByteString.Lazy       as LB
 import Network.Wreq                         as WR
@@ -47,7 +48,7 @@ fssFetchRemoteOrUpload store privacy url get_lbs_ident = do
                     -- 支持真正抓取，但要调用者提供 file ident
                     (_lbs, ident) <- get_lbs_ident
                     b <- save_as privacy url ident
-                    return $ if b then (Just ident) else Nothing
+                    return $ if b then Just ident else Nothing
 
                 Nothing -> do
                     -- 完全不支持任何抓取，只能从本地上传
@@ -76,7 +77,7 @@ simpleCachedDownload url = do
                     writeIORef lbs_ident_ref (Just result)
                     return result
 
-    return $ get_lbs_ident
+    return get_lbs_ident
 
 
 -- | 逐一用合适的方式（本地上传或远程抓取），把URL指定的文件保存至所有 FileStoreService
@@ -144,7 +145,7 @@ saveRemoteFileToFileStores stores privacy url = do
                                             on_error msg
 
     let start [] = do
-                    $logWarn $ "no file store service to use"
+                    $logWarn "no file store service to use"
                     return ()
         start ((SomeFileStoreService x, on_success, on_error):xs) = do
             err_or_m_ident <- tryMonadError $ ioErrorToMonadError $
@@ -185,7 +186,7 @@ saveLbsToFileStores :: forall i m.
     -> m ()
 saveLbsToFileStores stores m_mime privacy lbs = do
     now <- liftIO getCurrentTime
-    let expiry = addUTCTime (fromIntegral $ (60 * 60 *  24 :: Int)) now
+    let expiry = addUTCTime (fromIntegral (60 * 60 *  24 :: Int)) now
     infos :: [((SomeFileStoreService i m, i -> m (), Text -> m ()), IORef (Maybe i), Maybe (Maybe MimeType -> i -> m String), Maybe (String -> i -> m Bool))]
         <- forM stores $ \x@(SomeFileStoreService store, _, _) -> do
         let m_down_url1 = fssPublicDownloadUrl store
@@ -224,7 +225,7 @@ saveLbsToFileStores stores m_mime privacy lbs = do
                             on_error msg
 
                         Right True -> do
-                            liftIO $ writeIORef ident_ref (Just $ right_ident)
+                            liftIO $ writeIORef ident_ref (Just right_ident)
                             on_success right_ident
 
 
@@ -239,7 +240,7 @@ saveLbsToFileStores stores m_mime privacy lbs = do
                             on_error msg
 
                         Right ident -> do
-                            b <- save_ident ident $ "saving to file store"
+                            b <- save_ident ident "saving to file store"
                             when b $ do
                                 down_url <- mk_down_url m_mime ident
                                 liftIO $ writeIORef down_url_ref (Just down_url)
@@ -277,7 +278,7 @@ saveLbsToFileStores stores m_mime privacy lbs = do
                                         on_error msg
 
                                     Right True -> do
-                                        liftIO $ writeIORef ident_ref (Just $ right_ident)
+                                        liftIO $ writeIORef ident_ref (Just right_ident)
                                         on_success right_ident
 
                             _ -> return ()
@@ -289,7 +290,7 @@ saveLbsToFileStores stores m_mime privacy lbs = do
             case m_ident of
                 Nothing -> do
                     ident <- fssSaveLBS store m_mime privacy lbs
-                    _ <- on_get_ident store on_success on_error ident_ref ident $ "saving to file store"
+                    _ <- on_get_ident store on_success on_error ident_ref ident "saving to file store"
                     return ()
 
                 Just _ -> return ()
@@ -344,12 +345,12 @@ mimeFromAnyFileStore :: ( MonadIO m, Functor m, Eq i, Functor f
                             -> i
                             -> m (Maybe MimeType)
 mimeFromAnyFileStore stores ident = do
-    liftM join $
+    fmap join $
         runMaybeT $ asum $ flip fmap stores $
                             \fs ->
                                 case getFileStoreService fs of
                                     SomeFileStoreService store ->
-                                        liftM getMimeType $
+                                        fmap getMimeType $
                                             asum $ map (\p -> MaybeT $ fssFileStat store p ident)
                                                     [minBound..maxBound]
 
@@ -386,7 +387,7 @@ mkDownloadUrlFromAnyFileStore opts stores ttl m_mime ident = do
                         guard b
                         MaybeT $ mapM (\f -> f url_expiry m_mime ident) $ fssPrivateDownloadUrl store
 
-        liftM asum $ sequence $
+        fmap asum $ sequence
                     [ if use_private_url then down_pri else return mzero
                         -- prefer private url when possible
                     , if use_public_url then down_pub else return mzero
