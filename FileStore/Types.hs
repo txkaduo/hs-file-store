@@ -212,7 +212,7 @@ ioErrorToMonadError :: (MonadCatch m, MonadError String m) => m a -> m a
 ioErrorToMonadError f = try f >>= either (\(e :: IOError) -> throwError $ show e) return
 
 tryMonadError :: (MonadError e m) => m a -> m (Either e a)
-tryMonadError f = liftM Right f `catchError` (return . Left)
+tryMonadError f = fmap Right f `catchError` (return . Left)
 
 tryIOError' :: MonadCatch m => m a -> m (Either IOError a)
 tryIOError' = try

@@ -193,7 +193,7 @@ saveLbsToFileStores stores m_mime privacy lbs = do
             m_down_url2 = fssPrivateDownloadUrl store
         let m_down_url2' = flip fmap m_down_url2 $ \f -> f expiry
         let m_down_url = m_down_url1 <|> m_down_url2'
-            m_fetch_func = fmap (\f -> f privacy) $ fssFetchRemoteSaveAs store
+            m_fetch_func = (\f -> f privacy) <$> fssFetchRemoteSaveAs store
         ident_ref <- liftIO $ newIORef Nothing
         return (x, ident_ref, m_down_url, m_fetch_func)
 
@@ -387,13 +387,13 @@ mkDownloadUrlFromAnyFileStore opts stores ttl m_mime ident = do
                         guard b
                         MaybeT $ mapM (\f -> f url_expiry m_mime ident) $ fssPrivateDownloadUrl store
 
-        fmap asum $ sequence
+        asum <$> sequence
                     [ if use_private_url then down_pri else return mzero
                         -- prefer private url when possible
                     , if use_public_url then down_pub else return mzero
                     ]
 
-    runMaybeT $ asum $ func_list
+    runMaybeT $ asum func_list
     where
         use_public_url = UsePublicUrl `elem` opts
         use_private_url = UsePrivateUrl `elem` opts
@@ -408,7 +408,7 @@ fssPrivateDownloadUrlHelper :: (MonadIO m, MonadLogger m, FileStoreService (Exce
 fssPrivateDownloadUrlHelper file_store ttl ident = do
   case fssPrivateDownloadUrl file_store of
     Nothing -> do
-      $logError $ "fssPrivateDownloadUrl return Nothing!"
+      $logError "fssPrivateDownloadUrl return Nothing!"
       return Nothing
 
     Just mk_url -> do
